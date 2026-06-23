@@ -12,13 +12,13 @@ def run_backtest(
 ):
     positions = positions.fillna(0)
 
-    beta = hedge_ratios["beta"].reindex(positions.index).fillna(0)
+    beta = hedge_ratios["beta"].reindex(prices.index).fillna(0)
 
     y_price = prices[y_col].reindex(positions.index)
     x_price = prices[x_col].reindex(positions.index)
 
     y_units = positions
-    x_units = -beta * positions
+    x_units = -beta * positions if beta is not None else 0
 
     delta_y = y_units.diff().fillna(y_units)
     delta_x = x_units.diff().fillna(x_units)
@@ -41,16 +41,13 @@ def run_backtest(
     daily_pnl = daily_pnl - trading_costs
     cum_pnl = daily_pnl.cumsum()
 
-    results = pd.DataFrame(
-        {
-            "position": positions,
-            "beta": beta,
-            "y_units": y_units,
-            "x_units": x_units,
-            "daily_pnl": daily_pnl,
-            "cum_pnl": cum_pnl,
-            "trading_costs": trading_costs,
-        }
-    )
+    results = pd.DataFrame({
+        "positions": positions,
+        "daily_pnl": daily_pnl,
+        "cum_pnl": cum_pnl,
+        "trading_costs": trading_costs,
+        "y_units": y_units,
+        "x_units": x_units,
+    })
 
     return results
