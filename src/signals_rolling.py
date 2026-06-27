@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
+#generating signals via rolling regression, rolling spread and then rolling zscore
 
 def rolling_hedge_ratio(log_prices, y_col="PEP", x_col="KO", window=60):
     alphas = []
