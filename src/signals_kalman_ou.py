@@ -3,9 +3,7 @@ import pandas as pd
 import statsmodels.api as sm
 
 
-# ─────────────────────────────────────────────
-# STEP 1: Kalman Filter — dynamic hedge ratio
-# ─────────────────────────────────────────────
+# kalman filter for dynamic hedge ratio
 
 def kalman_hedge_ratio(log_prices, y_col="PEP", x_col="KO", delta=1e-4, R_var=1e-2):
     """
@@ -14,17 +12,13 @@ def kalman_hedge_ratio(log_prices, y_col="PEP", x_col="KO", delta=1e-4, R_var=1e
     State vector: [beta, intercept]
     Observation:  y_t = beta_t * x_t + intercept_t + noise
 
-    Parameters
-    ----------
     delta : process noise scalar — controls how fast beta is allowed to drift.
             Higher = adapts faster but noisier. For stable pairs like KO/PEP,
             1e-4 to 1e-5 is usually appropriate.
     R_var : observation noise variance. Higher = filter trusts the model more
             than new price observations.
 
-    Returns
-    -------
-    DataFrame with columns: beta, intercept, uncertainty (trace of P matrix)
+    returns DataFrame with columns: beta, intercept, uncertainty (trace of P matrix)
     """
     y = log_prices[y_col].values
     x = log_prices[x_col].values
@@ -61,10 +55,7 @@ def kalman_hedge_ratio(log_prices, y_col="PEP", x_col="KO", delta=1e-4, R_var=1e
         index=log_prices.index,
     )
 
-
-# ─────────────────────────────────────────────
-# STEP 2: Spread using dynamic hedge ratio
-# ─────────────────────────────────────────────
+# spread using dynamic hedge ratio
 
 def compute_kalman_spread(log_prices, kalman_ratios, y_col="PEP", x_col="KO"):
     """
@@ -80,9 +71,7 @@ def compute_kalman_spread(log_prices, kalman_ratios, y_col="PEP", x_col="KO"):
     return spread.rename("spread")
 
 
-# ─────────────────────────────────────────────
-# STEP 3: OU process — fit params + z-score
-# ─────────────────────────────────────────────
+# OU process — fit params + z-score
 
 def fit_ou_params(spread):
     """
@@ -113,7 +102,6 @@ def fit_ou_params(spread):
     X   = sm.add_constant(s_lag)
     res = sm.OLS(delta_s, X).fit()
 
-    # Named indexing — iloc ordering varies across statsmodels/pandas versions
     b = res.params["spread_lag"]
     a = res.params["const"]
 
@@ -181,9 +169,7 @@ def compute_ou_zscore(spread, ou_window=252, min_window=2):
     )
 
 
-# ─────────────────────────────────────────────
-# STEP 4: Signal generation
-# ─────────────────────────────────────────────
+# signal generation
 
 def generate_positions(zscore, entry=2.0, exit_z=0.5, stop=None):
     """
@@ -197,8 +183,6 @@ def generate_positions(zscore, entry=2.0, exit_z=0.5, stop=None):
     Lookahead fix: position is recorded BEFORE the current bar's z-score
     is acted on, so trades execute at the NEXT bar's open.
 
-    Parameters
-    ----------
     entry  : float — z-score level to enter a position (default 2.0)
     exit_z : float — z-score level to exit a position (default 0.5)
     stop   : float or None — if set, exit when z moves this many units
@@ -242,9 +226,7 @@ def generate_positions(zscore, entry=2.0, exit_z=0.5, stop=None):
     return pd.Series(positions, index=zscore.index, name="position")
 
 
-# ─────────────────────────────────────────────
-# STEP 5: Top-level pipeline
-# ─────────────────────────────────────────────
+# top-level pipeline
 
 def run_kalman_ou_pipeline(
     log_prices,
@@ -304,32 +286,3 @@ def run_kalman_ou_pipeline(
         "half_life":     half_life,
         "positions":     positions,
     }
-
-
-# ─────────────────────────────────────────────
-# Usage example
-# ─────────────────────────────────────────────
-
-if __name__ == "__main__":
-    # Assumes log_prices is a DataFrame with DatetimeIndex and columns ["PEP", "KO"]
-    # e.g. log_prices = np.log(raw_prices[["PEP", "KO"]])
-
-    # results = run_kalman_ou_pipeline(
-    #     log_prices,
-    #     y_col        = "PEP",
-    #     x_col        = "KO",
-    #     kalman_delta = 1e-4,  # increase if beta tracks too slowly
-    #     kalman_R     = 1e-2,
-    #     ou_window    = 252,   # 1 year to re-estimate OU params
-    #     min_window   = 2,     # KO/PEP half-life ~2 days — don't filter it out
-    #     entry        = 2.0,   # enter at ±2σ
-    #     exit_z       = 0.5,   # exit at ±0.5σ
-    #     stop         = None,  # e.g. 1.5 → stop at ±3.5σ
-    # )
-    #
-    # positions  = results["positions"]
-    # zscore     = results["zscore"]
-    # half_life  = results["half_life"]   # plot: rising = pair weakening
-    # beta       = results["kalman_ratios"]["beta"]
-
-    pass

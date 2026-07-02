@@ -8,7 +8,7 @@ def run_backtest(
     y_col="PEP",
     x_col="KO",
     tc_rate=0.0005,
-    slippage_rate=0.0005,
+    slippage_rate=0.0005, #these costs are considered conservative
 ):
     positions = positions.fillna(0)
 

@@ -50,12 +50,21 @@ def compute_rolling_zscore(spread, window=60):
 
 
 def generate_positions(zscore, entry=2.0, exit=0.5):
+    """
+    State-machine signal generator with fixed z-score thresholds.
+
+    Lookahead fix: position is recorded BEFORE the current bar's z-score
+    is acted on, so a trade signalled by today's z-score only takes effect
+    from tomorrow onward — it does not trade at today's price using today's
+    own z-score. (Mirrors the fix already used in signals_kalman_ou.py.)
+    """
     positions = []
     pos = 0
 
     for z in zscore:
+        positions.append(pos)  # record BEFORE acting on this bar's z — no lookahead
+
         if pd.isna(z):
-            positions.append(0)
             continue
 
         if pos == 0:
@@ -71,7 +80,5 @@ def generate_positions(zscore, entry=2.0, exit=0.5):
         elif pos == -1:
             if z < exit:
                 pos = 0
-
-        positions.append(pos)
 
     return pd.Series(positions, index=zscore.index, name="position")
