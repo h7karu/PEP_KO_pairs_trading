@@ -26,7 +26,7 @@ transaction costs as a first-class citizen rather than an afterthought.
 
 **1. Test for cointegration, not just correlation.** Two trending stocks will look highly
 correlated in price levels almost by default — that's not a tradeable signal. What matters
-is whether a linear combination of the two prices is *stationary*. This is tested with the
+is whether a linear combination of the two prices is _stationary_. This is tested with the
 Engle-Granger two-step method: regress `log(PEP)` on `log(KO)` via OLS, then run an
 Augmented Dickey-Fuller (ADF) test on the residuals.
 
@@ -36,14 +36,14 @@ Augmented Dickey-Fuller (ADF) test on the residuals.
 
 **2. Three ways to turn that into a trading signal:**
 
-| # | Hedge ratio estimation | Entry/exit signal |
-|---|---|---|
-| 1 | Rolling OLS, re-fit every 60 days | Rolling z-score, fixed window |
-| 2 | Kalman filter (adapts every bar) | Z-score window set by rolling OU-estimated half-life |
-| 3 | Kalman filter (adapts every bar) | Rolling z-score, fixed window |
+| #   | Hedge ratio estimation            | Entry/exit signal                                    |
+| --- | --------------------------------- | ---------------------------------------------------- |
+| 1   | Rolling OLS, re-fit every 60 days | Rolling z-score, fixed window                        |
+| 2   | Kalman filter (adapts every bar)  | Z-score window set by rolling OU-estimated half-life |
+| 3   | Kalman filter (adapts every bar)  | Rolling z-score, fixed window                        |
 
 Approach 1 is the baseline: a discrete, periodically-refit hedge ratio. Approach 2 pushes
-adaptivity further by also letting the *lookback window* track the estimated speed of mean
+adaptivity further by also letting the _lookback window_ track the estimated speed of mean
 reversion (fit an Ornstein-Uhlenbeck process to the spread, use its half-life as the z-score
 window). Approach 3 keeps the adaptive hedge ratio but reverts to a fixed-window z-score,
 isolating whether the OU-derived window was actually helping.
@@ -53,17 +53,18 @@ on notional traded (both legs), sized as ±1 unit of PEP hedged by −β units o
 
 ## Results
 
-| Strategy | Total PnL | Sharpe | Max Drawdown | Trades | Cost drag |
-|---|---|---|---|---|---|
-| 1. Rolling OLS (baseline) | −$8.19 | −0.12 | −$23.52 | 50 | — |
-| 2. Kalman + OU | $5.60 | 0.08 | −$17.63 | 194 | 77.7% |
-| 3. Kalman only | **$9.35** | **0.14** | −$16.33 | 230 | 71.0% |
+| Strategy                  | Total PnL | Sharpe   | Max Drawdown | Trades | Cost drag |
+| ------------------------- | --------- | -------- | ------------ | ------ | --------- |
+| 1. Rolling OLS (baseline) | −$8.19    | −0.12    | −$23.52      | 50     | 410.8%    |
+| 2. Kalman + OU            | $5.60     | 0.08     | −$17.63      | 194    | 77.7%     |
+| 3. Kalman only            | **$9.35** | **0.14** | −$16.33      | 230    | 71.0%     |
 
-*KO/PEP, 2015–2022 daily bars, 5bps slippage + 2bps commission.*
+_KO/PEP, 2015–2022 daily bars, 5bps slippage + 2bps commission._
 
 **Takeaways:**
+
 - A continuously-adapting Kalman hedge ratio beats a periodically-refit rolling OLS one.
-- Making the *entry signal* adaptive too (OU-derived half-life window) backfires: the
+- Making the _entry signal_ adaptive too (OU-derived half-life window) backfires: the
   half-life for this pair is very short (median ~2 bars), so the window is noisy and
   jumpy, driving up turnover until transaction costs eat ~78% of gross PnL.
 - None of the three strategies clears a strong risk-adjusted return once costs are honest.
@@ -73,10 +74,10 @@ on notional traded (both legs), sized as ±1 unit of PEP hedged by −β units o
 ## A bug worth mentioning
 
 An earlier version of `signals_rolling.generate_positions` had a same-bar lookahead: it
-recorded the day's position *after* reacting to that day's z-score, so a signal computed
+recorded the day's position _after_ reacting to that day's z-score, so a signal computed
 from today's close could trade at today's close — effectively using information before it
 was tradeable. `signals_kalman_ou.py`'s position generator already avoided this (positions
-are recorded *before* acting on the current bar, so a signal only takes effect from the next
+are recorded _before_ acting on the current bar, so a signal only takes effect from the next
 bar). Applying the same fix to `signals_rolling.py` dropped the rolling baseline's Sharpe
 from 0.33 → **−0.12**, and the Kalman-only strategy's from 0.44 → **0.14**. The Kalman+OU
 strategy was unaffected since it never had the bug.
